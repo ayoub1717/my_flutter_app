@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // إضافية للـ Logout
 import 'login_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -31,21 +32,26 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    name = widget.userData['name'];
-    tel = widget.userData['tel'];
-    sex = widget.userData['sex'];
-    startDate = widget.userData['start_date'];
-    endDate = widget.userData['end_date'];
+    // إسناد البيانات مع حماية من الـ null
+    name = widget.userData['name'] ?? "User";
+    tel = widget.userData['tel'] ?? "";
+    sex = widget.userData['sex'] ?? "";
+    startDate = widget.userData['start_date'] ?? "";
+    endDate = widget.userData['end_date'] ?? "";
 
     initNotifications();
     getDeviceToken();
-    checkMembership();
+
+    // تشغيل التنبيه التلقائي بعد رسم الواجهة
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      checkSubscriptionStatus();
+    });
+
     loadGlobalChat();
-    initNotifications();
 
     // 🔥 تحديث chat كل 5 ثواني
     Timer.periodic(const Duration(seconds: 5), (timer) {
-      if (showGlobalChat) loadGlobalChat();
+      if (mounted && showGlobalChat) loadGlobalChat();
     });
   }
 
@@ -53,7 +59,6 @@ class _HomePageState extends State<HomePage> {
   void getDeviceToken() async {
     deviceToken = await FirebaseMessaging.instance.getToken() ?? '';
     print("DEVICE TOKEN: $deviceToken");
-    // ممكن تبعثو للسيرفر باش نعرفو لكل user
   }
 
   // ================== Notifications ==================
@@ -70,11 +75,11 @@ class _HomePageState extends State<HomePage> {
   void showNotification(String message) async {
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
-          'global_chat_channel',
-          'Global Chat',
-          importance: Importance.max,
-          priority: Priority.high,
-        );
+      'global_chat_channel',
+      'Global Chat',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
 
     const NotificationDetails platformDetails = NotificationDetails(
       android: androidDetails,
@@ -88,22 +93,54 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ================== Membership Check ==================
-  void checkMembership() {
-    DateTime today = DateTime.now();
-    DateTime end = DateTime.parse(endDate);
+  // ================== Membership Check (Logic Improved) ==================
+  void checkSubscriptionStatus() {
+    try {
+      DateTime today = DateTime.now();
+      DateTime end = DateTime.parse(endDate);
 
-    if (today.year == end.year &&
-        today.month == end.month &&
-        today.day == end.day) {
-      showNotification("تنبيه العضويةعضويتك تنتهي اليوم! ⏰");
+      // التنبيه يظهر إذا كان اليوم هو يوم النهاية أو فات
+      if (today.isAfter(end) ||
+          (today.year == end.year &&
+              today.month == end.month &&
+              today.day == end.day)) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,
+            title: Text("تنبيه الخلاص ⚠️",
+                style:
+                    TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                textAlign: TextAlign.right),
+            content: Text(
+              "يا كابتن $name، اشتراكك وفى اليوم أو فات وقتو. الرجاء تجديد الاشتراك لمواصلة التمارين!",
+              style: TextStyle(
+                  color: isDarkMode ? Colors.white70 : Colors.black87),
+              textAlign: TextAlign.right,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("واضح"),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      print("Date parsing error: $e");
     }
   }
 
   bool isActive() {
-    DateTime now = DateTime.now();
-    DateTime end = DateTime.parse(endDate);
-    return now.isBefore(end);
+    try {
+      DateTime now = DateTime.now();
+      DateTime end = DateTime.parse(endDate);
+      return now.isBefore(end);
+    } catch (e) {
+      return false;
+    }
   }
 
   void loadMessages() {
@@ -134,9 +171,11 @@ class _HomePageState extends State<HomePage> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        setState(() {
-          globalChat = List<Map<String, dynamic>>.from(data["data"]);
-        });
+        if (data["data"] != null) {
+          setState(() {
+            globalChat = List<Map<String, dynamic>>.from(data["data"]);
+          });
+        }
       }
     } catch (e) {
       print("Error loading chat: $e");
@@ -165,6 +204,19 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  // ================== Logout Logic ==================
+  Future<void> handleLogout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('user_data'); // فسخ البيانات من الهاتف
+
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+      (route) => false,
+    );
+  }
+
   // ================== UI ==================
   @override
   Widget build(BuildContext context) {
@@ -187,12 +239,7 @@ class _HomePageState extends State<HomePage> {
           ),
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const LoginPage()),
-              );
-            },
+            onPressed: handleLogout, // استدعاء دالة الخروج الصحيحة
           ),
         ],
       ),
@@ -252,7 +299,6 @@ class _HomePageState extends State<HomePage> {
                   infoCard("Start", startDate),
                   infoCard("End", endDate),
                   const SizedBox(height: 10),
-
                   ElevatedButton(
                     onPressed: () {
                       setState(() => showGlobalChat = !showGlobalChat);
@@ -264,9 +310,7 @@ class _HomePageState extends State<HomePage> {
                           : "إظهار Global Chat",
                     ),
                   ),
-
                   const SizedBox(height: 10),
-
                   if (showGlobalChat)
                     Container(
                       height: 300,
@@ -310,6 +354,10 @@ class _HomePageState extends State<HomePage> {
                               Expanded(
                                 child: TextField(
                                   controller: chatController,
+                                  style: TextStyle(
+                                      color: isDarkMode
+                                          ? Colors.white
+                                          : Colors.black),
                                   decoration: const InputDecoration(
                                     hintText: "اكتب رسالة...",
                                   ),

@@ -55,11 +55,23 @@ class _LoginPageState extends State<LoginPage> {
 
       if (data["status"] == "success") {
         if (!mounted) return;
+
+        // 1. جلب الـ SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+
+        // 2. تحويل الـ data["data"] لـ String (JSON) وحفظها
+        // استعملنا jsonEncode باش نحفظو الـ Map كاملة (ID, Name, Tel, etc.)
+        await prefs.setString('user_data', jsonEncode(data["data"]));
+
+        // 3. التعدية للـ HomePage مع بعث البيانات
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => HomePage(userData: data["data"])),
+          MaterialPageRoute(
+            builder: (_) => HomePage(userData: data["data"]),
+          ),
         );
       } else {
+        // في حالة فشل الدخول (اسم أو هاتف غلط)
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(data["message"] ?? "فشل تسجيل الدخول")),

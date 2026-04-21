@@ -1,35 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // 👈 ضرورية للحفظ
-import 'dart:convert'; // 👈 ضرورية لفك شفرة البيانات
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import 'login_page.dart';
-import 'home_page.dart'; // 👈 تأكد من استيراد صفحة الـ Home
+import 'home_page.dart';
 import 'firebase_options.dart';
-
-// 🔔 messaging
 import 'package:firebase_messaging/firebase_messaging.dart';
 
 void main() async {
+  // 1. ضرورية جداً باش الـ SharedPreferences والـ Firebase يخدموا قبل الـ runApp
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. تشغيل Firebase
+  // 2. تشغيل Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // 2. تشغيل Messaging للـ Mobile
+  // 3. تشغيل Messaging للـ Mobile فقط
   if (!kIsWeb) {
     await initMessaging();
   }
 
-  // 3. التثبت من وجود مستخدم مسجل دخول سابقاً
+  // 4. التثبت من وجود مستخدم مسجل دخول سابقاً
   final prefs = await SharedPreferences.getInstance();
   final String? userRawData = prefs.getString('user_data');
 
   Widget initialScreen;
 
   if (userRawData != null) {
-    // إذا لقينا بيانات، نبعثوها للـ Home مباشرة
-    initialScreen = HomePage(userData: jsonDecode(userRawData));
+    try {
+      // إذا لقينا بيانات، نبعثوها للـ Home مباشرة
+      initialScreen = HomePage(userData: jsonDecode(userRawData));
+    } catch (e) {
+      // في حالة وجود خطأ في فك التشفير، نرجع للـ Login للسلامة
+      initialScreen = const LoginPage();
+    }
   } else {
     // إذا مالقيناش، نفتحو صفحة الـ Login
     initialScreen = const LoginPage();
@@ -38,7 +42,7 @@ void main() async {
   runApp(MyApp(firstScreen: initialScreen));
 }
 
-// 🔔 Firebase Messaging setup
+// إعدادات الإشعارات
 Future<void> initMessaging() async {
   FirebaseMessaging messaging = FirebaseMessaging.instance;
   await messaging.requestPermission();
@@ -59,8 +63,8 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Bargou Gym',
-      theme: ThemeData.dark(), // استعملنا الـ Dark كـ افتراضي
-      home: firstScreen, // يفتح الصفحة اللي قررها الـ main
+      theme: ThemeData.dark(),
+      home: firstScreen,
     );
   }
 }
