@@ -18,17 +18,25 @@ android {
         versionName = flutter.versionName
     }
 
-
-compileOptions {
-        // تغيير من VERSION_1_8 إلى VERSION_17
+    compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-
         isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
-        // تغيير من "1.8" إلى "17"
         jvmTarget = "17"
     }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            isShrinkResources = false
+            signingConfig = signingConfigs.getByName("debug")
+        }
+    }
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }
