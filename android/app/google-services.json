@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "122930893416",
+    "project_id": "bargou-gym",
+    "storage_bucket": "bargou-gym.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:122930893416:android:d69ef70c0a6bad6854a1dd",
+        "android_client_info": {
+          "package_name": "com.example.bargou_gym"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAgna3D5H0CCQEwm5cf0DQ0b45u2lzkzl8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
