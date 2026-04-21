@@ -7,7 +7,7 @@
     <application
         android:label="bargou_gym"
         android:name="${applicationName}"
-        android:icon="@mipmap/bargou_gym">
+        android:icon="@mipmap/ic_launcher">
 
         <activity
             android:name=".MainActivity"
